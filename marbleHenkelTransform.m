@@ -27,6 +27,10 @@ z = sol(:,3);
 
 % Plot the Lorenz attractor
 figure;
+% Set the figure's name
+set(gcf, 'Name', 'Lorenz Attractor');
+% Optional: Make the name visible in the figure window title bar
+set(gcf, 'NumberTitle', 'off');
 plot3(x, y, z, 'LineWidth', 1.5);
 title('Lorenz Attractor');
 xlabel('X axis');
@@ -43,8 +47,16 @@ HankelMatrix = hankel(x(1:m),x(m:end));
 
 [U,E,V]=svd(HankelMatrix,'econ');
 
-figure;
+figure
+% Set the figure's name
+set(gcf, 'Name', 'Delay Embedded Attractor');
+% Optional: Make the name visible in the figure window title bar
+set(gcf, 'NumberTitle', 'off');
 plot3(V(:,1),V(:,2),V(:,3))
+
+
+% Up to her I think everything is correct/I get expected results
+
 
 % Next step aka derivatives
 r=15;
@@ -88,7 +100,24 @@ sys = ss(A, B, eye(r-1), 0*B);
 [y_sim, t_sim] = lsim(sys, xReg(L, r), dt*(L-1), xReg(1, 1:r-1));
 
 figure
+% Set the figure's name
+set(gcf, 'Name', 'Reconstructed Attractor');
+% Optional: Make the name visible in the figure window title bar
+set(gcf, 'NumberTitle', 'off');
 L = 300:50000;
 plot3(y_sim(L,1),y_sim(L,2),y_sim(L,3),'Color',[0 0 .5],'LineWidth',1.5)
 axis tight
 xlabel('v_1'), ylabel('v_2'), zlabel('v_3')
+
+figure
+% Set the figure's name
+set(gcf, 'Name', 'V1 vs V15');
+% Optional: Make the name visible in the figure window title bar
+set(gcf, 'NumberTitle', 'off');
+subplot(2,1,1)
+plot(tspan(L), y_sim(L,1), 'b', 'LineWidth', 0.5)
+box on;
+
+subplot(2,1,2)
+plot(tspan(L), xReg(L,r), 'r', 'LineWidth', 0.5)
+box on;
