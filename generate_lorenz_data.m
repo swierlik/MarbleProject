@@ -101,13 +101,6 @@ B_y = A_y(:,r);
 A_y = A_y(:,1:r-1);
 
 % Save the system data for simulation of both x and y
-save('systemData.mat', 'A_x', 'B_x', 'A_y', 'B_y', 'xReg', 'yReg', 'r', 'tspan', 'dt')
-
-%Run the simulation using the system matrices   
-sys_x = ss(A_x, B_x, eye(r-1), 0*B_x);  % System matrices for x
-[y_sim_x, t_sim_x] = lsim(sys_x, xReg, dt*(1:length(xReg)), xReg(1, 1:r-1));
-
-sys_y = ss(A_y, B_y, eye(r-1), 0*B_y);  % System matrices for y
-[y_sim_y, t_sim_y] = lsim(sys_y, yReg, dt*(1:length(yReg)), yReg(1, 1:r-1));
+save('systemData.mat','V_x','V_y', 'A_x', 'B_x', 'A_y', 'B_y', 'xReg', 'yReg', 'r', 'tspan', 'dt')
 
 

@@ -22,11 +22,12 @@ lorenz = @(t, xyz) [sigma*(xyz(2) - xyz(1)); ...
 options = odeset('RelTol', 1e-12, 'AbsTol', 1e-12);
 [t, sol] = ode45(lorenz, tspan, initial_conditions, options);
 
+
 %Save the data
-save('lorenzData.mat','sol','t','dt')
+%save('lorenzData.mat','sol','t','dt')
 
 % Load the data
-load('lorenzData.mat')
+%load('lorenzData.mat')
 
 % Extract x, y, z
 x = sol(:,1);
@@ -37,6 +38,9 @@ z = sol(:,3);
 % Creating the Hankel matrix
 m = 100;         % Size of the Hankel matrix (number of rows)
 HankelMatrix = hankel(x(1:m),x(m:end));
+
+%add some noise to hankel
+HankelMatrix = HankelMatrix + 0.01*randn(size(HankelMatrix));
 
 
 [U,E,V]=svd(HankelMatrix,'econ');
@@ -113,17 +117,17 @@ sys = ss(A, B, eye(r-1), 0*B);
 % ylabel('X');
 % grid on;
 
-figure
-% Set the figure's name
-set(gcf, 'Name', 'Delay Embedded Attractor');
-% Optional: Make the name visible in the figure window title bar
-set(gcf, 'NumberTitle', 'off');
-plot3(V(:,1),V(:,2),V(:,3))
-view(-15,65);  % Set the view to 3D
+% figure
+% % Set the figure's name
+% set(gcf, 'Name', 'Delay Embedded Attractor');
+% % Optional: Make the name visible in the figure window title bar
+% set(gcf, 'NumberTitle', 'off');
+% plot3(V(:,1),V(:,2),V(:,3))
+% view(-15,65);  % Set the view to 3D
 
 figure
 % Set the figure's name
-set(gcf, 'Name', 'Reconstructed Attractor');
+set(gcf, 'Name', 'Reconstructed Attractor with noise');
 % Optional: Make the name visible in the figure window title bar
 set(gcf, 'NumberTitle', 'off');
 L = 300:length(tspan)-300;
