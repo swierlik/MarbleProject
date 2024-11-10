@@ -19,7 +19,7 @@ lorenz = @(t, xyz) [sigma*(xyz(2) - xyz(1)); ...
                     xyz(1)*xyz(2) - beta*xyz(3)];
 
 % Solve using ode45
-options = odeset('RelTol', 1e-8, 'AbsTol', 1e-8);
+options = odeset('RelTol', 1e-12, 'AbsTol', 1e-12);
 [t, sol] = ode45(lorenz, tspan, initial_conditions, options);
 
 %Change varaible names
@@ -45,7 +45,7 @@ HankelMatrix_y = hankel(y(1:m), y(m:end));
 [U_y, E_y, V_y] = svd(HankelMatrix_y, 'econ');
 
 % Derivatives computation for both x and y
-r = 15;
+r = 4;
 dV_x = zeros(length(V_x)-5, r);
 dV_y = zeros(length(V_y)-5, r);
 
