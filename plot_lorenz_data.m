@@ -13,27 +13,27 @@ z = sol(:,3);
 
 %UNALETERED DATA
 
-% Plot the original Lorenz attractor
-figure;
-subplot(1, 2, 1);
-set(gcf, 'Name', 'Lorenz Attractor');
-set(gcf, 'NumberTitle', 'off');
-plot3(x, y, z, 'LineWidth', 1.5);
-title('Lorenz Attractor');
-xlabel('X axis');
-ylabel('Y axis');
-zlabel('Z axis');
-grid on;
-view(45, 45);
-axis tight;
+% % Plot the original Lorenz attractor
+% figure;
+% subplot(1, 2, 1);
+% set(gcf, 'Name', 'Lorenz Attractor');
+% set(gcf, 'NumberTitle', 'off');
+% plot3(x, y, z, 'LineWidth', 1.5);
+% title('Lorenz Attractor');
+% xlabel('X axis');
+% ylabel('Y axis');
+% zlabel('Z axis');
+% grid on;
+% view(45, 45);
+% axis tight;
 
-% X vs Time Plot
-subplot(1, 2, 2);
-plot(t, sol(:,1), 'b', 'LineWidth', 1.5);
-title('X vs Time');
-xlabel('Time');
-ylabel('X');
-grid on;
+% % X vs Time Plot
+% subplot(1, 2, 2);
+% plot(t, sol(:,1), 'b', 'LineWidth', 1.5);
+% title('X vs Time');
+% xlabel('Time');
+% ylabel('X');
+% grid on;
 
 % ----------SIMULATING THE SYSTEM--------------
 
@@ -47,11 +47,12 @@ sys_y = ss(A_y, B_y, eye(r-1), 0*B_y);  % System matrices for y
 [y_sim_y, t_sim_y] = lsim(sys_y, yReg(L, r), dt*(L-1), yReg(1, 1:r-1));
 
 %Reconstruct and simulate the system for x with y's forcing vector
+%[y_sim_x_y, t_sim_x_y] = lsim(sys_x, -1*yReg(L, r), dt*(L-1), xReg(1, 1:r-1));
 [y_sim_x_y, t_sim_x_y] = lsim(sys_x, yReg(L, r), dt*(L-1), xReg(1, 1:r-1));
 
 %Reconstruct and simulate the system for y with x's forcing vector
+%[y_sim_y_x, t_sim_y_x] = lsim(sys_y, -1*xReg(L, r), dt*(L-1), yReg(1, 1:r-1));
 [y_sim_y_x, t_sim_y_x] = lsim(sys_y, xReg(L, r), dt*(L-1), yReg(1, 1:r-1));
-
 
 % ---------------PLOTTING X-------------------
 
@@ -111,43 +112,6 @@ view(-15, 65);
 % Compute error over time
 error_y = sqrt(sum((V_y(L,1:r-1) - y_sim_y(L,1:r-1)).^2, 2));
 error_y2 = sqrt(sum((V_y2(L,1:r-1) - V_y(L,1:r-1)).^2, 2));
-
-
-% ---------------FILTERS-------------------
-function x_est = applyKalmanFilter(z)
-    N = length(z);
-    x_est = zeros(N,1);
-    P = zeros(N,1);
-    K = zeros(N,1);
-    A = 1;
-    H = 1;
-    Q = 1e-5;
-    R = var(z)/10;
-    x_est(1) = z(1);
-    P(1) = 1;
-    
-    for k = 2:N
-        % Prediction
-        x_pred = A * x_est(k-1);
-        P_pred = A * P(k-1) * A' + Q;
-
-        % Update
-        K(k) = P_pred * H' / (H * P_pred * H' + R);
-        x_est(k) = x_pred + K(k) * (z(k) - H * x_pred);
-        P(k) = (1 - K(k) * H) * P_pred;
-    end
-end
-
-%Plot forcing vector of y before and after the filter
-figure
-% Set the figure's name
-set(gcf, 'Name', 'Forcing Vector of y Before and After the Filter');
-set(gcf, 'NumberTitle', 'off');
-plot(tspan(L), yReg(L,11), 'r', 'LineWidth', 0.5)
-hold on;
-plot(tspan(L), applyKalmanFilter(yReg(L,11)), 'b', 'LineWidth', 0.5)
-legend("Original", "Filtered")
-box on;
 
 
 
@@ -244,6 +208,7 @@ plot(tspan(L_plot), error_y2, 'g', 'LineWidth', 0.5)
 legend("Error Y", "Error YX", "Error Y2")
 box on;
 
+
 % -------------COMPARING X vs X2 and Y vs Y2----------------
 % plot x vs x2 and y vs y2 on one grpah
 figure
@@ -286,16 +251,17 @@ box on;
 
 
 
-% %Plot v11 of y vs v11 of x on 1 graph
-% figure
-% % Set the figure's name
-% set(gcf, 'Name', 'V11y vs V11x');
-% set(gcf, 'NumberTitle', 'off');
-% plot(tspan(L), yReg(L,11), 'r', 'LineWidth', 0.5)
-% hold on
-% plot(tspan(L), y_sim_x(L,11), 'b', 'LineWidth', 0.5)
-% legend("V11y", "V11x")
-% box on;
+%Plot v11 of y vs v11 of x on 1 graph
+figure
+% Set the figure's name
+set(gcf, 'Name', 'V11y vs -V11x');
+set(gcf, 'NumberTitle', 'off');
+plot(tspan(L), yReg(L,11), 'r', 'LineWidth', 0.5)
+hold on
+plot(tspan(L), y_sim_x(L,11), 'b', 'LineWidth', 0.5)
+%plot(tspan(L), -1*y_sim_x(L,11), 'g', 'LineWidth', 0.5)%inverse
+legend("V11y", "V11x", "-V11X")
+box on;
 
 
 % %plot from v1 to v14 of x
