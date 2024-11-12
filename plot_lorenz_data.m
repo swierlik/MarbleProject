@@ -1,3 +1,5 @@
+%plot_lorenz_data.m
+
 % Load the data
 load('lorenzData.mat')
 load('systemData.mat')
@@ -39,16 +41,17 @@ z = sol(:,3);
 
 % Reconstruct and simulate the system for x
 L = 1:min(length(tspan), size(xReg, 1));
+L2 = 1:min(length(tspan), size(xReg2, 1));
 sys_x = ss(A_x, B_x, eye(r-1), 0*B_x);  % System matrices for x
 [y_sim_x, t_sim_x] = lsim(sys_x, xReg(L, r), dt*(L-1), xReg(1, 1:r-1));
 
 % Reconstruct and simulate the system for x with 2nd data
 sys_x2 = ss(A_x2, B_x2, eye(r2-1), 0*B_x2);  % System matrices for x
-[y_sim_x2, t_sim_x2] = lsim(sys_x2, xReg2(L, r2), dt2*(L-1), xReg2(1, 1:r2-1));
+[y_sim_x2, t_sim_x2] = lsim(sys_x2, xReg2(L2, r2), dt2*(L2-1), xReg2(1, 1:r2-1));
 
 %Reconstruct and simulate the system for y with 2nd data
 sys_y2 = ss(A_y2, B_y2, eye(r2-1), 0*B_y2);  % System matrices for y
-[y_sim_y2, t_sim_y2] = lsim(sys_y2, yReg2(L, r2), dt2*(L-1), yReg2(1, 1:r2-1));
+[y_sim_y2, t_sim_y2] = lsim(sys_y2, yReg2(L2, r2), dt2*(L2-1), yReg2(1, 1:r2-1));
 
 % Reconstruct and simulate the system for y
 sys_y = ss(A_y, B_y, eye(r-1), 0*B_y);  % System matrices for y
@@ -73,7 +76,7 @@ sys_y = ss(A_y, B_y, eye(r-1), 0*B_y);  % System matrices for y
 % Plot delay-embedded attractor for x
 L = 300:length(tspan)-300;
 figure;
-subplot(1, 3, 1);
+subplot(2, 2, 1);
 set(gcf, 'Name', 'Delay Embedded Attractor X and Error');
 set(gcf, 'NumberTitle', 'off');
 plot3(V_x(:,1), V_x(:,2), V_x(:,3));  % Original delay embedding of x
@@ -82,9 +85,17 @@ xlabel('v_1'), ylabel('v_2'), zlabel('v_3');
 view(-15, 65);
 
 % Plot the reconstructed attractor for x
-subplot(1, 3, 2);
+subplot(2, 2, 2);
 plot3(y_sim_x(L,1), y_sim_x(L,2), y_sim_x(L,3), 'Color', [0 0 0.5], 'LineWidth', 1.5);
 title('Reconstructed Delay Embedded Attractor X');
+xlabel('v_1'), ylabel('v_2'), zlabel('v_3');
+axis tight;
+view(-15, 65);
+
+% Plot the reconstructed attractor for x with 2nd data
+subplot(2, 2, 3);
+plot3(y_sim_x2(L,1), y_sim_x2(L,2), y_sim_x2(L,3), 'Color', [0 0 0.5], 'LineWidth', 1.5);
+title('Reconstructed Delay Embedded Attractor X with 2nd Data');
 xlabel('v_1'), ylabel('v_2'), zlabel('v_3');
 axis tight;
 view(-15, 65);
@@ -94,8 +105,11 @@ error_x = sqrt(sum((V_x(L,1:r-1) - y_sim_x(L,1:r-1)).^2, 2));
 error_x2 = sqrt(sum((V_x2(L,1:r-1) - V_x(L,1:r-1)).^2, 2));
 
 % Plot error over time
-subplot(1, 3, 3);
+subplot(2, 2, 4);
 plot(tspan(L), error_x, 'r-', 'LineWidth', 1.5);
+hold on;
+plot(tspan(L), error_x2, 'b-', 'LineWidth', 1.5);
+%plot3(y_sim_x2(L2,1),y_sim_x2(L2,2),y_sim_x2(L2,3), 'r-', 'LineWidth', 1.5);
 title('Error Between Original and Reconstructed X Over Time');
 xlabel('Time');
 ylabel('Error');

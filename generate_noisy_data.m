@@ -45,7 +45,7 @@ HankelMatrix_y = hankel(y(1:m), y(m:end));
 [U_y, E_y, V_y] = svd(HankelMatrix_y, 'econ');
 
 % Derivatives computation for both x and y
-r = 4;
+r = 15;
 dV_x = zeros(length(V_x)-5, r);
 dV_y = zeros(length(V_y)-5, r);
 
@@ -80,7 +80,7 @@ for k=1:size(Theta_y,2)
 end
 
 % Sparse regression to obtain Xi for both x and y
-lambda = 0.02;
+lambda = 0.0;
 clear Xi_x Xi_y
 for k = 1:r-1
     Xi_x(:,k) = sparsifyDynamics(Theta_x, dV_x(:,k), lambda*k, 1);  

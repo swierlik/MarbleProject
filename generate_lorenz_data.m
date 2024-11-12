@@ -1,3 +1,5 @@
+%generate_lorenz_data.m
+
 % Lorenz Attractor Data Generation
 
 % Parameters
@@ -75,7 +77,7 @@ for k=1:size(Theta_y,2)
 end
 
 % Sparse regression to obtain Xi for both x and y
-lambda = 0.03;
+lambda = 0.0;
 clear Xi_x Xi_y
 for k = 1:r-1
     Xi_x(:,k) = sparsifyDynamics(Theta_x, dV_x(:,k), lambda*k, 1);  
