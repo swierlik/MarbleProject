@@ -1,17 +1,26 @@
 %plot_lorenz_data.m
 
 % Load the data
-load('lorenzData.mat')
-load('systemData.mat')
 
-load('lorenzData2.mat')
-load('systemData2.mat')
+%Lorenz data
+load('Data/lorenzData.mat')
+load('Data/systemData.mat')
+
+load('Data/lorenzData2.mat')
+load('Data/systemData2.mat')
+
+% %Osillator data
+% load('oscillatorData.mat')
+% load('systemData.mat')
+
+% load('oscillatorData2.mat')
+% load('systemData2.mat')
 
 
 % Extract x, y, z
 x = sol(:,1);
 y = sol(:,2);
-z = sol(:,3);
+%z = sol(:,3);
 
 %UNALETERED DATA
 

@@ -1,42 +1,42 @@
-% noise_optimization_multiple_realizations.m
+% noise_optimization_multiple_stochastic.m
 
 % Load the data
-load('lorenzData.mat') % Contains 'sol', 't', 'dt'
-load('systemData.mat') % Contains 'V_x', 'V_y', 'A_x', 'B_x', 'A_y', 'B_y', 'xReg', 'yReg', 'r', 'tspan', 'dt')
+load('Data/lorenzData.mat'); % Base deterministic Lorenz data
+load('Data/lorenzDataStochastic.mat'); % Stochastic Lorenz data
+load('Data/systemData.mat'); % Contains 'V_x', 'V_y', 'A_x', 'B_x', 'A_y', 'B_y', 'xReg', 'yReg', 'r', 'tspan', 'dt'
 
-% Extract x, y, z from sol
-x = sol(:,1);
-y = sol(:,2);
-z = sol(:,3);
+% Extract x, y, z from base deterministic solution
+x_base = sol(:, 1);
+y_base = sol(:, 2);
+z_base = sol(:, 3);
+
+% Extract x, y, z from stochastic solution
+x_stochastic = sol2(:, 1);
+y_stochastic = sol2(:, 2);
+z_stochastic = sol2(:, 3);
+
+% Ensure the lengths of stochastic and deterministic data match
+min_length = min(length(x_base), length(x_stochastic));
+x_base = x_base(1:min_length);
+y_base = y_base(1:min_length);
+z_base = z_base(1:min_length);
+
+x_stochastic = x_stochastic(1:min_length);
+y_stochastic = y_stochastic(1:min_length);
+z_stochastic = z_stochastic(1:min_length);
+
+% Combine into matrices
+deterministic_data = [x_base, y_base, z_base];
+stochastic_data = [x_stochastic, y_stochastic, z_stochastic];
 
 % Define L (exclude initial and final transients)
-L = 300:length(xReg)-300;
-forcing_vector = xReg(L, r);
+L = 300:(min_length - 300);
 
-% Determine the number of input channels and define the time vector
-n_inputs = size(B_x, 2);
+% Time vector
 time_vector = dt * (L - 1);
 
-% Set the seed for reproducibility
-rng(117);
-
 % Number of noisy realizations
-n_realizations = 100;
-
-% Preallocate error tracking arrays
-errors_noisy = zeros(n_realizations, length(time_vector));
-errors_ma = zeros(n_realizations, length(time_vector));
-errors_sg = zeros(n_realizations, length(time_vector));
-errors_wd = zeros(n_realizations, length(time_vector));
-
-% Initialize best parameters for each method
-best_ma_window_size = 5;
-best_sg_order = 3;
-best_sg_framelen = 7;
-best_wd_level = 3;
-min_mean_error_ma = Inf;
-min_mean_error_sg = Inf;
-min_mean_error_wd = Inf;
+n_realizations = size(stochastic_data, 1);
 
 % Define ranges for parameter search
 ma_window_sizes = 3:2:21;
@@ -44,101 +44,101 @@ sg_orders = 2:4;
 sg_framelens = 5:2:25;
 wd_levels = 1:9;
 
-% Loop over all noisy realizations
-for i = 1:n_realizations
-    % Generate a new noisy vector
-    noise_level = 0.1 * std(forcing_vector);
-    noisy_forcing_vector = forcing_vector + noise_level * randn(size(forcing_vector));
-    noisy_forcing_matrix = repmat(noisy_forcing_vector, 1, n_inputs);
-    [y_sim_x_noisy, ~] = lsim(sys_x, noisy_forcing_matrix, time_vector, xReg(L(1), 1:r-1));
-    error_noisy = sqrt(sum((y_sim_x_noisy - y_sim_x).^2, 2));
-    errors_noisy(i, :) = error_noisy;
+% Preallocate for average errors
+avg_error_noisy = 0;
+avg_error_ma = zeros(1, length(ma_window_sizes));
+avg_error_sg = zeros(length(sg_orders), length(sg_framelens));
+avg_error_wd = zeros(1, length(wd_levels));
+
+% Debugging output: Check data sizes
+fprintf('Number of realizations: %d\n', n_realizations);
+fprintf('Data size (stochastic): [%d, %d]\n', size(stochastic_data));
+fprintf('Data size (deterministic): [%d, %d]\n', size(deterministic_data));
+
+% Parallelized loop for realizations
+parfor i = 1:size(stochastic_data, 1)
+    % Temporary variables for each worker
+    temp_error_noisy = 0;
+    temp_error_ma = zeros(1, length(ma_window_sizes));
+    temp_error_sg = zeros(length(sg_orders), length(sg_framelens));
+    temp_error_wd = zeros(1, length(wd_levels));
+
+    % Extract current noisy realization
+    noisy_data = stochastic_data(i, :);
+
+    % Compute noisy error (baseline)
+    temp_error_noisy = sqrt(mean((noisy_data - deterministic_data(i, :)).^2));
 
     % ------------------ Optimization for Moving Average Filter ------------------
-    for window_size = ma_window_sizes
-        smoothed_forcing_vector_ma = movmean(noisy_forcing_vector, window_size);
-        smoothed_forcing_matrix_ma = repmat(smoothed_forcing_vector_ma, 1, n_inputs);
-        [y_sim_x_ma, ~] = lsim(sys_x, smoothed_forcing_matrix_ma, time_vector, xReg(L(1), 1:r-1));
-        error_ma = sqrt(sum((y_sim_x_ma - y_sim_x).^2, 2));
-
-        % Update best parameters if average error improves
-        mean_error_ma = mean(error_ma);
-        if mean_error_ma < min_mean_error_ma
-            min_mean_error_ma = mean_error_ma;
-            best_ma_window_size = window_size;
+    for j = 1:length(ma_window_sizes)
+        window_size = ma_window_sizes(j);
+        smoothed_data_ma = zeros(size(noisy_data)); % Preallocate for smoothed data
+        for col = 1:size(noisy_data, 2) % Apply column-wise
+            smoothed_data_ma(:, col) = movmean(noisy_data(:, col), window_size);
         end
+        error_ma = sqrt(mean((smoothed_data_ma - deterministic_data(i, :)).^2));
+        temp_error_ma(j) = temp_error_ma(j) + error_ma;
     end
 
-    % Store the error for the best Moving Average parameters
-    smoothed_forcing_vector_ma_best = movmean(noisy_forcing_vector, best_ma_window_size);
-    smoothed_forcing_matrix_ma_best = repmat(smoothed_forcing_vector_ma_best, 1, n_inputs);
-    [y_sim_x_ma_best, ~] = lsim(sys_x, smoothed_forcing_matrix_ma_best, time_vector, xReg(L(1), 1:r-1));
-    errors_ma(i, :) = sqrt(sum((y_sim_x_ma_best - y_sim_x).^2, 2));
-
     % ------------------ Optimization for Savitzky-Golay Filter ------------------
-    for order = sg_orders
-        for framelen = sg_framelens
-            if mod(framelen, 2) == 1
-                smoothed_forcing_vector_sg = sgolayfilt(noisy_forcing_vector, order, framelen);
-                smoothed_forcing_matrix_sg = repmat(smoothed_forcing_vector_sg, 1, n_inputs);
-                [y_sim_x_sg, ~] = lsim(sys_x, smoothed_forcing_matrix_sg, time_vector, xReg(L(1), 1:r-1));
-                error_sg = sqrt(sum((y_sim_x_sg - y_sim_x).^2, 2));
-
-                mean_error_sg = mean(error_sg);
-                if mean_error_sg < min_mean_error_sg
-                    min_mean_error_sg = mean_error_sg;
-                    best_sg_order = order;
-                    best_sg_framelen = framelen;
+    for k = 1:length(sg_orders)
+        for l = 1:length(sg_framelens)
+            framelen = sg_framelens(l);
+            if mod(framelen, 2) == 1 && framelen <= length(noisy_data) % Ensure valid frame length
+                order = sg_orders(k);
+                smoothed_data_sg = zeros(size(noisy_data)); % Preallocate for smoothed data
+                for col = 1:size(noisy_data, 2) % Apply column-wise
+                    smoothed_data_sg(:, col) = sgolayfilt(noisy_data(:, col), order, framelen);
                 end
+                error_sg = sqrt(mean((smoothed_data_sg - deterministic_data(i, :)).^2));
+                temp_error_sg(k, l) = temp_error_sg(k, l) + error_sg;
             end
         end
     end
 
-    % Store the error for the best Savitzky-Golay parameters
-    smoothed_forcing_vector_sg_best = sgolayfilt(noisy_forcing_vector, best_sg_order, best_sg_framelen);
-    smoothed_forcing_matrix_sg_best = repmat(smoothed_forcing_vector_sg_best, 1, n_inputs);
-    [y_sim_x_sg_best, ~] = lsim(sys_x, smoothed_forcing_matrix_sg_best, time_vector, xReg(L(1), 1:r-1));
-    errors_sg(i, :) = sqrt(sum((y_sim_x_sg_best - y_sim_x).^2, 2));
-
     % ------------------ Optimization for Wavelet Denoising ------------------
-    for level = wd_levels
-        smoothed_forcing_vector_wd = wdenoise(noisy_forcing_vector, level);
-        smoothed_forcing_matrix_wd = repmat(smoothed_forcing_vector_wd, 1, n_inputs);
-        [y_sim_x_wd, ~] = lsim(sys_x, smoothed_forcing_matrix_wd, time_vector, xReg(L(1), 1:r-1));
-        error_wd = sqrt(sum((y_sim_x_wd - y_sim_x).^2, 2));
-
-        mean_error_wd = mean(error_wd);
-        if mean_error_wd < min_mean_error_wd
-            min_mean_error_wd = mean_error_wd;
-            best_wd_level = level;
+    for m = 1:length(wd_levels)
+        level = wd_levels(m);
+        smoothed_data_wd = zeros(size(noisy_data)); % Preallocate for smoothed data
+        for col = 1:size(noisy_data, 2) % Apply column-wise
+            if length(noisy_data(:, col)) > 1 % Ensure valid input length
+                smoothed_data_wd(:, col) = wdenoise(noisy_data(:, col), level);
+            else
+                smoothed_data_wd(:, col) = noisy_data(:, col); % Leave unchanged if too short
+            end
         end
+        error_wd = sqrt(mean((smoothed_data_wd - deterministic_data(i, :)).^2));
+        temp_error_wd(m) = temp_error_wd(m) + error_wd;
     end
 
-    % Store the error for the best Wavelet Denoising parameters
-    smoothed_forcing_vector_wd_best = wdenoise(noisy_forcing_vector, best_wd_level);
-    smoothed_forcing_matrix_wd_best = repmat(smoothed_forcing_vector_wd_best, 1, n_inputs);
-    [y_sim_x_wd_best, ~] = lsim(sys_x, smoothed_forcing_matrix_wd_best, time_vector, xReg(L(1), 1:r-1));
-    errors_wd(i, :) = sqrt(sum((y_sim_x_wd_best - y_sim_x).^2, 2));
+    % Aggregate temporary results
+    avg_error_noisy = avg_error_noisy + temp_error_noisy;
+    avg_error_ma = avg_error_ma + temp_error_ma;
+    avg_error_sg = avg_error_sg + temp_error_sg;
+    avg_error_wd = avg_error_wd + temp_error_wd;
 end
 
-% ------------------ Final Time-Series Error Plot ------------------
+% ------------------ Normalize Average Errors ------------------
+avg_error_noisy = avg_error_noisy / n_realizations;
+avg_error_ma = avg_error_ma / n_realizations;
+avg_error_sg = avg_error_sg / n_realizations;
+avg_error_wd = avg_error_wd / n_realizations;
 
-% Compute the mean error across all realizations
-mean_error_noisy = mean(errors_noisy, 1);
-mean_error_ma = mean(errors_ma, 1);
-mean_error_sg = mean(errors_sg, 1);
-mean_error_wd = mean(errors_wd, 1);
+% ------------------ Determine Best Parameters ------------------
 
-figure;
-plot(time_vector, mean_error_noisy, 'r', 'LineWidth', 1);
-hold on;
-plot(time_vector, mean_error_ma, 'g', 'LineWidth', 1);
-plot(time_vector, mean_error_sg, 'm', 'LineWidth', 1);
-plot(time_vector, mean_error_wd, 'k', 'LineWidth', 1);
-legend('Noisy', 'MA Optimized', 'SG Optimized', 'WD Optimized');
-title('Mean Error Over Time (Averaged Across 100 Realizations)');
-xlabel('Time');
-ylabel('Mean Error');
-grid on;
+% Find the best parameters for each method
+[~, best_ma_idx] = min(avg_error_ma);
+best_ma_window_size = ma_window_sizes(best_ma_idx);
 
-% ------------------ End of Script ------------------
+[min_sg_error, sg_idx] = min(avg_error_sg(:));
+[best_sg_order_idx, best_sg_framelen_idx] = ind2sub(size(avg_error_sg), sg_idx);
+best_sg_order = sg_orders(best_sg_order_idx);
+best_sg_framelen = sg_framelens(best_sg_framelen_idx);
+
+[~, best_wd_idx] = min(avg_error_wd);
+best_wd_level = wd_levels(best_wd_idx);
+
+% ------------------ Print Best Parameters ------------------
+fprintf('Best Moving Average Window Size: %d\n', best_ma_window_size);
+fprintf('Best Savitzky-Golay Order: %d, Frame Length: %d\n', best_sg_order, best_sg_framelen);
+fprintf('Best Wavelet Denoising Level: %d\n', best_wd_level);

@@ -25,7 +25,7 @@ options = odeset('RelTol', 1e-12, 'AbsTol', 1e-12);
 [t, sol] = ode45(lorenz, tspan, initial_conditions, options);
 
 % Save the data
-save('lorenzData.mat', 'sol', 't', 'dt')
+save('Data/lorenzData.mat', 'sol', 't', 'dt')
 
 % Extract x, y, z
 x = sol(:,1);
