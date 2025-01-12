@@ -103,6 +103,6 @@ B_y = A_y(:,r);
 A_y = A_y(:,1:r-1);
 
 % Save the system data for simulation of both x and y
-save('systemData.mat','V_x','V_y', 'A_x', 'B_x', 'A_y', 'B_y', 'xReg', 'yReg', 'r', 'tspan', 'dt')
+save('Data/systemData.mat','V_x','V_y', 'A_x', 'B_x', 'A_y', 'B_y', 'xReg', 'yReg', 'r', 'tspan', 'dt')
 
 

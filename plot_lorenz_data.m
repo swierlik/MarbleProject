@@ -6,8 +6,8 @@
 load('Data/lorenzData.mat')
 load('Data/systemData.mat')
 
-load('Data/lorenzData2.mat')
-load('Data/systemData2.mat')
+load('Data/lorenzDataStochastic.mat')
+load('Data/systemDataStochastic.mat')
 
 % %Osillator data
 % load('oscillatorData.mat')

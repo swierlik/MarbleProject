@@ -108,9 +108,10 @@ grid on;
 % Figure 2: Delay Embedded Attractors
 figure;
 subplot(2, 2, 1);
-plot3(V_x(L,1), V_x(L,2), V_x(L,3), 'b', 'LineWidth', 1);
+%plot3(V_x(L,1), V_x(L,2), V_x(L,3), 'b', 'LineWidth', 1);
+
+plot3(y_sim_x2(L,1), y_sim_x2(L,2), y_sim_x2(L,3), 'r', 'LineWidth', 1);
 hold on;
-plot3(V_x2(L,1), V_x2(L,2), V_x2(L,3), 'r', 'LineWidth', 1);
 title('Original vs Noisy Delay Embedded Attractor');
 xlabel('v_1'); ylabel('v_2'); zlabel('v_3');
 legend('Original', 'Noisy');

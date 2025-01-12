@@ -14,7 +14,7 @@ tspan = dt:dt:tfinal; % Run for 50 time units
 initial_conditions = [-8, 8, 27];
 
 % Noise coefficients (stochastic intensity)
-eta_x = 1; % Noise coefficient for x
+eta_x = 0.1; % Noise coefficient for x
 eta_y = 0.5; % Noise coefficient for y
 eta_z = 0.5; % Noise coefficient for z
 
