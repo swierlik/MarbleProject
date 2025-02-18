@@ -168,7 +168,7 @@ error_y2 = sqrt(sum((V_y2(L,1:r-1) - V_y(L,1:r-1)).^2, 2));
 % ---------------PLOTTING X WITH Y FORCING VECTOR-------------------
 % Plot delay-embedded attractor for x
 figure;
-subplot(1, 3, 1);
+subplot(1, 2, 1);
 set(gcf, 'Name', 'Delay Embedded Attractor X with Y Forcing and Error');
 set(gcf, 'NumberTitle', 'off');
 plot3(V_x(:,1), V_x(:,2), V_x(:,3));  % Original delay embedding of x
@@ -177,7 +177,7 @@ xlabel('v_1'), ylabel('v_2'), zlabel('v_3');
 view(-15, 65);
 
 % Plot the reconstructed attractor for x with y's forcing vector
-subplot(1, 3, 2);
+subplot(1, 2, 2);
 plot3(y_sim_x_y(L,1), y_sim_x_y(L,2), y_sim_x_y(L,3), 'Color', [0 0 0.5], 'LineWidth', 1.5);
 title('Reconstructed Attractor X with Y Forcing');
 xlabel('v_1'), ylabel('v_2'), zlabel('v_3');
@@ -189,14 +189,14 @@ error_x_y = sqrt(sum((V_x(L,1:r-1) - y_sim_x_y(L,1:r-1)).^2, 2));
 error_x_neg_y = sqrt(sum((V_x(L,1:r-1) - y_sim_x_neg_y(L,1:r-1)).^2, 2));
 %error_x_y = sqrt(sum((V_x(L,1:3) - y_sim_x_y(L,1:3)).^2, 2));
 
-% Plot error over time
-subplot(1, 3, 3);
-plot(tspan(L), error_x_y, 'r-', 'LineWidth', 1.5);
-title('Error Between Original X and Reconstructed X with Y Forcing');
-xlabel('Time');
-ylabel('Error');
-grid on;
-axis tight;
+% % Plot error over time
+% subplot(1, 3, 3);
+% plot(tspan(L), error_x_y, 'r-', 'LineWidth', 1.5);
+% title('Error Between Original X and Reconstructed X with Y Forcing');
+% xlabel('Time');
+% ylabel('Error');
+% grid on;
+% axis tight;
 
 
 % -------------COMPARING X vs XY vs X_neg_y ERROR----------------

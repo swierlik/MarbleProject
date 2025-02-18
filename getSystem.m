@@ -1,7 +1,7 @@
-function [V, A_x, B_x, xReg, t_reg] = getSystem(x, hankelRows, r, dt, tspan)
+function [V, A_x, B_x, xReg, t_reg, S] = getSystem(x, hankelRows, r, dt, tspan)
     % Generate Hankel matrix
     HankelMatrix_x = hankel(x(1:hankelRows), x(hankelRows:end));
-    [~, ~, V_full] = svd(HankelMatrix_x, 'econ');
+    [S, ~, V_full] = svd(HankelMatrix_x, 'econ');
 
     % Check if V_full is empty or ill-conditioned
     if isempty(V_full)
