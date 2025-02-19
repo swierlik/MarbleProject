@@ -1,4 +1,4 @@
-% noise_optimization.m (Updated for SVWE)
+% noise_optimization.m (Updated for SVWE with Full Suite Optimization)
 
 % Load the original deterministic and noisy data
 load('Data/lorenzData.mat', 'sol', 't', 'dt');
@@ -23,9 +23,7 @@ sys_x2 = ss(A_x2, B_x2, eye(r-1), zeros(r-1, 1));
 error_noisy = sqrt(sum(S_x2(1:r-1) .* (V_x2(L,1:r-1) - y_sim_x_noisy(:,1:r-1)).^2, 2));
 mean_error_noisy = mean(error_noisy);
 
-% ------------------ Optimization for Smoothing (Using SVWE) ------------------
-
-% Moving Average Filter Optimization
+% ------------------ Moving Average Filter Optimization ------------------
 best_ma_window_size = 5;
 min_error_ma = Inf;
 for window_size = 3:2:21
@@ -41,7 +39,7 @@ for window_size = 3:2:21
     end
 end
 
-% Savitzky-Golay Filter Optimization
+% ------------------ Savitzky-Golay Filter Optimization ------------------
 best_sg_order = 3;
 best_sg_framelen = 7;
 min_error_sg = Inf;
@@ -63,61 +61,37 @@ for order = 2:4
     end
 end
 
-% Wavelet Denoising Optimization
+% ------------------ Wavelet Denoising Optimization ------------------
+wavelet_families = {'haar', 'db2', 'db4', 'sym2', 'sym4', 'coif2', 'bior1.3', 'bior3.5', 'rbio1.3', 'rbio3.5', 'dmey'};
+levels = 1:9;
+
+best_wavelet = '';
 best_wd_level = 1;
 min_error_wd = Inf;
-for level = 1:9
-    x_smooth_wd = wdenoise(x_noisy, level);
-    [V_wd, A_x_wd, B_x_wd, xReg_wd, S_wd] = getSystem(x_smooth_wd, 100, r, dt, tspan);
-    sys_x_wd = ss(A_x_wd, B_x_wd, eye(r-1), zeros(r-1, 1));
-    [y_sim_x_wd, ~] = lsim(sys_x_wd, xReg_wd(L, r), dt * (L - 1), xReg_wd(1, 1:r-1));
-    error_wd = sqrt(sum(S_wd(1:r-1) .* (V_wd(L,1:r-1) - y_sim_x_wd(:,1:r-1)).^2, 2));
-    mean_error_wd = mean(error_wd);
-    if mean_error_wd < min_error_wd
-        min_error_wd = mean_error_wd;
-        best_wd_level = level;
+
+for w = 1:length(wavelet_families)
+    for level = levels
+        x_smooth_wd = wdenoise(x_noisy, level, 'Wavelet', wavelet_families{w});
+        [V_wd, A_x_wd, B_x_wd, xReg_wd, S_wd] = getSystem(x_smooth_wd, 100, r, dt, tspan);
+        sys_x_wd = ss(A_x_wd, B_x_wd, eye(r-1), zeros(r-1, 1));
+        [y_sim_x_wd, ~] = lsim(sys_x_wd, xReg_wd(L, r), dt * (L - 1), xReg_wd(1, 1:r-1));
+        error_wd = sqrt(sum(S_wd(1:r-1) .* (V_wd(L,1:r-1) - y_sim_x_wd(:,1:r-1)).^2, 2));
+        mean_error_wd = mean(error_wd);
+        if mean_error_wd < min_error_wd
+            min_error_wd = mean_error_wd;
+            best_wavelet = wavelet_families{w};
+            best_wd_level = level;
+        end
     end
 end
 
 % ------------------ Final Error Comparison ------------------
-
-% Compute best smoothing results
-x_best_ma = movmean(x_noisy, best_ma_window_size);
-x_best_sg = sgolayfilt(x_noisy, best_sg_order, best_sg_framelen);
-x_best_wd = wdenoise(x_noisy, best_wd_level);
-
-[V_best_ma, ~, ~, ~, S_best_ma] = getSystem(x_best_ma, 100, r, dt, tspan);
-[V_best_sg, ~, ~, ~, S_best_sg] = getSystem(x_best_sg, 100, r, dt, tspan);
-[V_best_wd, ~, ~, ~, S_best_wd] = getSystem(x_best_wd, 100, r, dt, tspan);
-
-error_ma_best = sqrt(sum(S_best_ma(1:r-1) .* (V_x(L,1:r-1) - V_best_ma(L,1:r-1)).^2, 2));
-error_sg_best = sqrt(sum(S_best_sg(1:r-1) .* (V_x(L,1:r-1) - V_best_sg(L,1:r-1)).^2, 2));
-error_wd_best = sqrt(sum(S_best_wd(1:r-1) .* (V_x(L,1:r-1) - V_best_wd(L,1:r-1)).^2, 2));
-
-% ------------------ Plot Results ------------------
+disp(['Best Moving Average Window: ', num2str(best_ma_window_size)]);
+disp(['Best Savitzky-Golay Order: ', num2str(best_sg_order), ', Frame Length: ', num2str(best_sg_framelen)]);
+disp(['Best Wavelet: ', best_wavelet, ', Level: ', num2str(best_wd_level)]);
 
 figure;
 bar([mean_error_noisy, min_error_ma, min_error_sg, min_error_wd]);
-set(gca, 'XTickLabel', {'Noisy', 'MA Optimized', 'SG Optimized', 'WD Optimized'});
-title('Comparison of Minimum Errors After Optimization');
-xlabel('Method');
-ylabel('Mean SVWE Error');
-grid on;
-
-figure;
-plot(tspan(L), error_noisy, 'r', 'LineWidth', 1);
-hold on;
-plot(tspan(L), error_ma_best, 'g', 'LineWidth', 1);
-plot(tspan(L), error_sg_best, 'm', 'LineWidth', 1);
-plot(tspan(L), error_wd_best, 'k', 'LineWidth', 1);
-legend('Noisy', 'MA Optimized', 'SG Optimized', 'WD Optimized');
-title('Error Evolution Over Time (SVWE)');
-xlabel('Time');
-ylabel('Error');
-grid on;
-
-disp(['Best Moving Average Window: ', num2str(best_ma_window_size)]);
-disp(['Best Savitzky-Golay Order: ', num2str(best_sg_order), ', Frame Length: ', num2str(best_sg_framelen)]);
-disp(['Best Wavelet Denoising Level: ', num2str(best_wd_level)]);
-
-% ------------------ End of Script ------------------
+xticklabels({'Noisy', 'Moving Average', 'Savitzky-Golay', 'Wavelet Denoising'});
+ylabel('Mean Error');
+title('Comparison of Mean Errors for Different Denoising Techniques');

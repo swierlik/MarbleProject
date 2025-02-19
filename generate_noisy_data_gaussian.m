@@ -4,7 +4,7 @@
 load('Data/lorenzData.mat', 'sol', 't', 'dt');
 
 % Set Gaussian noise level
-eta = 0.001;  % Standard deviation of Gaussian noise
+eta = 0.00001;  % Standard deviation of Gaussian noise
 
 % Generate measurement noise (Gaussian with mean 0 and std dev eta)
 measurement_noise_x = eta * randn(size(sol,1), 1);

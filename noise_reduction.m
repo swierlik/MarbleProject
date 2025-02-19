@@ -23,17 +23,24 @@ L = 300:length(xReg)-300;
 % ------------------ Noise Reduction on Stochastic Data ------------------
 
 %Universal parameters (from optimization results)
-% %for 0.02 noise
-window_size = 7; % Moving Average
+%for 0.0001 noise
+window_size = 3; % Moving Average
 order = 2; % Savitzky-Golay Order
-framelen = 49; % Savitzky-Golay Frame Length
+framelen = 45; % Savitzky-Golay Frame Length
 wd_level = 1; % Wavelet Denoising Level
-wd_wavelet ='dmey'; %Wavelet Denoising Wavelet
-%for 0.05 noise
-% window_size = 19; % Moving Average
-% order = 3; % Savitzky-Golay Order
-% framelen = 27; % Savitzky-Golay Frame Length
+wd_wavelet ='bior3.5'; %Wavelet Denoising Wavelet
+% %for 0.02 noise
+% window_size = 7; % Moving Average
+% order = 2; % Savitzky-Golay Order
+% framelen = 49; % Savitzky-Golay Frame Length
+% wd_level = 1; % Wavelet Denoising Level
+% wd_wavelet ='dmey'; %Wavelet Denoising Wavelet
+% %for 0.05 noise
+% window_size = 13; % Moving Average
+% order = 2; % Savitzky-Golay Order
+% framelen = 23; % Savitzky-Golay Frame Length
 % wd_level = 9; % Wavelet Denoising Level
+% wd_wavelet ='sym4'; %Wavelet Denoising Wavelet
 %for 0.3 noise
 % window_size = 13; % Moving Average
 % order = 3; % Savitzky-Golay Order
@@ -42,8 +49,13 @@ wd_wavelet ='dmey'; %Wavelet Denoising Wavelet
 
 
 % Apply noise reduction to x's
+% Apply noise reduction to x's
 x_movmean = movmean(x_noisy, window_size); % Moving Average
+%x_movmean(1:window_size) = x_original(1:window_size); % Set first values to original
+
 x_sg = sgolayfilt(x_noisy, order, framelen); % Savitzky-Golay
+%x_sg(1:framelen) = x_original(1:framelen); % Set first values to original
+
 x_wd = wdenoise(x_noisy, wd_level, 'Wavelet', wd_wavelet); % Wavelet Denoising
 
 % ------------------ Generate HAVOK System Data ------------------
@@ -177,6 +189,8 @@ error_x_wd = sqrt(sum(S_wd_norm(1:r-1) .* (V_wd(L,1:r-1) - y_sim_x_wd(L,1:r-1)).
 % legend('Original', 'Noisy', 'Moving Average', 'Savitzky-Golay', 'Wavelet');
 % grid on;
 
+L = 1000:min(length(tspan), size(xReg, 1));
+
 % Figure 2: Delay Embedded Attractors
 figure;
 subplot(2, 2, 1);
@@ -190,7 +204,7 @@ view(-15,65)
 grid on;
 
 subplot(2, 2, 2);
-plot3(y_sim_x_movmean(:,1), y_sim_x_movmean(:,2), y_sim_x_movmean(:,3), 'g', 'LineWidth', 1);
+plot3(y_sim_x_movmean(L,1), y_sim_x_movmean(L,2), y_sim_x_movmean(L,3), 'g', 'LineWidth', 1);
 title('Reconstructed (Moving Average)');
 xlabel('v_1'); ylabel('v_2'); zlabel('v_3');
 view(-15,65)
@@ -212,12 +226,12 @@ grid on;
 
 % Figure 3: Error Comparison
 figure;
-plot(tspan(L), error_x, 'b', 'LineWidth', 1);
+plot(tspan(L), error_x(L), 'b', 'LineWidth', 1);
 hold on;
-plot(tspan(L), error_x_noisy, 'r', 'LineWidth', 1);
-plot(tspan(L), error_x_movmean, 'g', 'LineWidth', 1);
-plot(tspan(L), error_x_sg, 'm', 'LineWidth', 1);
-plot(tspan(L), error_x_wd, 'k', 'LineWidth', 1);
+plot(tspan(L), error_x_noisy(L), 'r', 'LineWidth', 1);
+plot(tspan(L), error_x_movmean(L), 'g', 'LineWidth', 1);
+plot(tspan(L), error_x_sg(L), 'm', 'LineWidth', 1);
+plot(tspan(L), error_x_wd(L), 'k', 'LineWidth', 1);
 title('Error Comparison');
 xlabel('Time');
 ylabel('Error');
