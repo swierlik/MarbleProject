@@ -20,12 +20,15 @@ set(gcf,'PaperPositionMode','auto')
 % print('-depsc2', '-loose', [figpath,ModelName,'_p1_axis.eps']);
 
 %%  Part 2:  Time Series
+dt = 0.001;
+tspan=[dt:dt:25];
+indexspan = 1:25000;
 figure
-plot(tspan,xdat(:,1),'k','LineWidth',2)
+plot(tspan,xdat(indexspan,1),'k','LineWidth',2)
 xlabel('t'), ylabel('x')
-set(gca,'XTick',[0 10 20 30 40 50 60 70 80 90 100],'YTick',[-20 -10 0 10 20])
-set(gcf,'Position',[100 100 550 300])
-xlim([0 100])
+%set(gca,'XTick',[0 10 20 30 40 50 60 70 80 90 100],'YTick',[-20 -10 0 10 20])
+%set(gcf,'Position',[100 100 550 300])
+%xlim([0 100])
 set(gcf,'PaperPositionMode','auto')
 % print('-depsc2', '-loose', [figpath,ModelName,'_p2_axis.eps']);
 

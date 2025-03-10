@@ -2,23 +2,16 @@
 
 % Load the data
 load('Data/lorenzData.mat') % Contains 'sol', 't', 'dt'
-load('Data/systemData.mat') % Contains 'V_x', 'V_y', 'A_x', 'B_x', 'A_y', 'B_y', 'xReg', 'yReg', 'r', 'tspan', 'dt', 'S_x'
+load('Data/systemData.mat') % Contains 'V_x', 'A_x', 'B_x', 'xReg', 'r', 'tspan', 'dt', 'E_x', 'V_x'
 
-load('Data/lorenzDataStochastic.mat') % Contains 'sol2', 't2', 'dt2'
-load('Data/systemDataStochastic.mat') % Contains 'V_x2', 'V_y2', 'A_x2', 'B_x2', 'A_y2', 'B_y2', 'xReg2', 'yReg2', 'r2', 'tspan2', 'dt2', 'S_x2'
 
-% Extract x, y, z from sol
+% Extract x from sol
 x_original = sol(:,1);
-y_original = sol(:,2);
-z_original = sol(:,3);
 
-% Extract x, y, z from sol2
-x_noisy = sol2(:,1);
-y_noisy = sol2(:,2);
-z_noisy = sol2(:,3);
 
-% Define L (exclude initial and final transients)
-L = 300:length(xReg)-300;
+%--------Add Gaussian Noise to x_original--------
+variance = 0.000001; % Noise level
+x_noisy = x_original + variance*randn(size(x_original)); % Add Gaussian noise to x0
 
 % ------------------ Noise Reduction on Stochastic Data ------------------
 
@@ -47,21 +40,18 @@ wd_wavelet ='bior3.5'; %Wavelet Denoising Wavelet
 % framelen = 39; % Savitzky-Golay Frame Length
 % wd_level = 6; % Wavelet Denoising Level
 
-
-% Apply noise reduction to x's
-% Apply noise reduction to x's
+% ----------------Apply noise reduction to x's-----------------
 x_movmean = movmean(x_noisy, window_size); % Moving Average
-%x_movmean(1:window_size) = x_original(1:window_size); % Set first values to original
-
 x_sg = sgolayfilt(x_noisy, order, framelen); % Savitzky-Golay
-%x_sg(1:framelen) = x_original(1:framelen); % Set first values to original
-
 x_wd = wdenoise(x_noisy, wd_level, 'Wavelet', wd_wavelet); % Wavelet Denoising
 
 % ------------------ Generate HAVOK System Data ------------------
-[V_movmean, A_x_movmean, B_x_movmean, xReg_movmean, S_movmean] = getSystem(x_movmean, 100, r, dt, tspan);
-[V_sg, A_x_sg, B_x_sg, xReg_sg, S_sg] = getSystem(x_sg, 100, r, dt, tspan);
-[V_wd, A_x_wd, B_x_wd, xReg_wd, S_wd] = getSystem(x_wd, 100, r, dt, tspan);
+r=7;
+
+[V_x2, A_x2, B_x2, xReg2,U_x2, E_x2] = getSystem(x_noisy, 100, r, dt, tspan);
+[V_movmean, A_x_movmean, B_x_movmean, xReg_movmean, U_movmean, E_movmean] = getSystem(x_movmean, 100, r, dt, tspan);
+[V_sg, A_x_sg, B_x_sg, xReg_sg, U_sg, E_sg] = getSystem(x_sg, 100, r, dt, tspan);
+[V_wd, A_x_wd, B_x_wd, xReg_wd, U_wd, E_wd] = getSystem(x_wd, 100, r, dt, tspan);
 
 % ------------------ Reconstruct and simulate all systems ------------------
 L = 1:min(length(tspan), size(xReg, 1));
@@ -72,7 +62,7 @@ sys_x = ss(A_x, B_x, eye(r-1), 0*B_x);  % System matrices for x
 
 % Noisy
 sys_x2 = ss(A_x2, B_x2, eye(r-1), 0*B_x2);  % System matrices for x
-[y_sim_x2, t_sim_x2] = lsim(sys_x2, xReg2(L, r2), dt2*(L-1), xReg2(1, 1:r2-1));
+[y_sim_x2, t_sim_x2] = lsim(sys_x2, xReg2(L, r), dt2*(L-1), xReg2(1, 1:r-1));
 
 % Moving Average
 sys_x_movmean = ss(A_x_movmean, B_x_movmean, eye(r-1), 0*B_x_movmean);  % System matrices for x
@@ -86,59 +76,64 @@ sys_x_sg = ss(A_x_sg, B_x_sg, eye(r-1), 0*B_x_sg);  % System matrices for x
 sys_x_wd = ss(A_x_wd, B_x_wd, eye(r-1), 0*B_x_wd);  % System matrices for x
 [y_sim_x_wd, t_sim_x_wd] = lsim(sys_x_wd, xReg_wd(L, r), dt*(L-1), xReg_wd(1, 1:r-1));
 
-% % ------------------ Compute Errors ------------------
+% -------------- Reconstruct x(t) for Each Method --------------
+% Ensure U matches Koopman mode rank
+U_x = U_x(:, 1:r-1);  
+U_x2 = U_x2(:, 1:r-1);  
+U_movmean = U_movmean(:, 1:r-1);  
+U_sg = U_sg(:, 1:r-1);  
+U_wd = U_wd(:, 1:r-1);  
 
-% ------------------ Compute Singular Value Weighted Error (SVWE) ------------------
-S_norm = S_x;
-S_noisy_norm = S_x2;
-S_movmean_norm = S_movmean;
-S_sg_norm = S_sg;
-S_wd_norm = S_wd;
+% Ensure E matches Koopman mode rank
+E_x = E_x(1:r-1, 1:r-1);
+E_x2 = E_x2(1:r-1, 1:r-1);
+E_movmean = E_movmean(1:r-1, 1:r-1);
+E_sg = E_sg(1:r-1, 1:r-1);
+E_wd = E_wd(1:r-1, 1:r-1);
 
-% Weight errors using singular values
-error_x = sqrt(sum(S_norm(1:r-1) .* (V_x(L,1:r-1) - y_sim_x(L,1:r-1)).^2, 2));
-error_x_noisy = sqrt(sum(S_noisy_norm(1:r-1) .* (V_x2(L,1:r-1) - y_sim_x2(L,1:r-1)).^2, 2));
-error_x_movmean = sqrt(sum(S_movmean_norm(1:r-1) .* (V_movmean(L,1:r-1) - y_sim_x_movmean(L,1:r-1)).^2, 2));
-error_x_sg = sqrt(sum(S_sg_norm(1:r-1) .* (V_sg(L,1:r-1) - y_sim_x_sg(L,1:r-1)).^2, 2));
-error_x_wd = sqrt(sum(S_wd_norm(1:r-1) .* (V_wd(L,1:r-1) - y_sim_x_wd(L,1:r-1)).^2, 2));
+% Project simulated results back to original space using SVD modes U
+x_reconstructed = U_x * E_x * y_sim_x.';
+x_reconstructed_noisy = U_x2 * E_x2 * y_sim_x2.';
+x_reconstructed_movmean = U_movmean * E_movmean * y_sim_x_movmean.';
+x_reconstructed_sg = U_sg * E_sg * y_sim_x_sg.';
+x_reconstructed_wd = U_wd * E_wd * y_sim_x_wd.';
 
+x_reconstructed = dehankelize(x_reconstructed);
+x_reconstructed_noisy = dehankelize(x_reconstructed_noisy);
+x_reconstructed_movmean = dehankelize(x_reconstructed_movmean);
+x_reconstructed_sg = dehankelize(x_reconstructed_sg);
+x_reconstructed_wd = dehankelize(x_reconstructed_wd);
 
-% error_x = sqrt(sum((V_x(L,1:r-1) - y_sim_x(L,1:r-1)).^2, 2));
-% error_x_noisy = sqrt(sum((V_x(L,1:r-1) - y_sim_x2(L,1:r-1)).^2, 2));
-% error_x_movmean = sqrt(sum((V_x(L,1:r-1) - y_sim_x_movmean(L,1:r-1)).^2, 2));
-% error_x_sg = sqrt(sum((V_x(L,1:r-1) - y_sim_x_sg(L,1:r-1)).^2, 2));
-% error_x_wd = sqrt(sum((V_x(L,1:r-1) - y_sim_x_wd(L,1:r-1)).^2, 2));
+% -------------- Error Calculation for Reconstructed x(t) --------------
+error_x = (x_original(L) - x_reconstructed(L)).^2;
+error_x_noisy = (x_original(L) - x_reconstructed_noisy(L)).^2;
+error_x_movmean = (x_original(L) - x_reconstructed_movmean(L)).^2;
+error_x_sg = (x_original(L) - x_reconstructed_sg(L)).^2;
+error_x_wd = (x_original(L) - x_reconstructed_wd(L)).^2;
 
-%Compute errors weighted based off te weights in the system
+% -------------- Plot Results for Comparison --------------
 
-% %RMSE for each x compare to original
-% rmse_noisy = sqrt(mean((x_original(L) - x_noisy(L)).^2));
-% rmse_movmean = sqrt(mean((x_original(L) - x_movmean(L)).^2));
-% rmse_sg = sqrt(mean((x_original(L) - x_sg(L)).^2));
-% rmse_wd = sqrt(mean((x_original(L) - x_wd(L)).^2));
+figure;
+hold on;
+%plot(t, x_original, 'k', 'LineWidth', 1.5); % Original
+plot(t_sim_x, x_reconstructed(L), 'b', 'LineWidth', 1.2); % HAVOK Original
+plot(t_sim_x2, x_reconstructed_noisy(L), 'r', 'LineWidth', 1.2); % Noisy HAVOK
+plot(t_sim_x_movmean, x_reconstructed_movmean(L), 'g', 'LineWidth', 1.2); % Moving Avg
+plot(t_sim_x_sg, x_reconstructed_sg(L), 'm', 'LineWidth', 1.2); % Savitzky-Golay
+plot(t_sim_x_wd, x_reconstructed_wd(L), 'c', 'LineWidth', 1.2); % Wavelet
+%legend('Original', 'HAVOK Original', 'Noisy HAVOK', 'Moving Avg', 'Savitzky-Golay', 'Wavelet');
+legend('HAVOK Original', 'Noisy HAVOK', 'Moving Avg', 'Savitzky-Golay', 'Wavelet');
 
-% disp(['RMSE for Noisy: ', num2str(rmse_noisy)]);
-% disp(['RMSE for Moving Average: ', num2str(rmse_movmean)]);
-% disp(['RMSE for Savitzky-Golay: ', num2str(rmse_sg)]);
-% disp(['RMSE for Wavelet Denoising: ', num2str(rmse_wd)]);
+xlabel('Time');
+ylabel('x(t)');
+title('Reconstruction of x(t) using HAVOK for Different Methods');
+hold off;
 
-% %errors based off x at spots 1-3
-% error_x = sqrt(sum((V_x(L,1:3) - y_sim_x(L,1:3)).^2, 2));
-% error_x_noisy = sqrt(sum((V_x(L,1:3) - y_sim_x2(L,1:3)).^2, 2));
-% error_x_movmean = sqrt(sum((V_x(L,1:3) - y_sim_x_movmean(L,1:3)).^2, 2));
-% error_x_sg = sqrt(sum((V_x(L,1:3) - y_sim_x_sg(L,1:3)).^2, 2));
-% error_x_wd = sqrt(sum((V_x(L,1:3) - y_sim_x_wd(L,1:3)).^2, 2));
 
 % ------------------ Plot Results ------------------
 
-% %PLot the RMSEs in a bar chart
-% figure;
-% bar([rmse_noisy, rmse_movmean, rmse_sg, rmse_wd]);
-% title('RMSE for each denoising method');
-% xlabel('Denoising Method');
-% ylabel('RMSE');
-% set(gca, 'xticklabel', {'Noisy', 'Moving Average', 'Savitzky-Golay', 'Wavelet'});
-% grid on;
+
+
 
 % % Figure 1: Original and noisy forcing vectors
 % figure;
@@ -224,19 +219,19 @@ xlabel('v_1'); ylabel('v_2'); zlabel('v_3');
 view(-15,65)
 grid on;
 
-% Figure 3: Error Comparison
-figure;
-plot(tspan(L), error_x(L), 'b', 'LineWidth', 1);
-hold on;
-plot(tspan(L), error_x_noisy(L), 'r', 'LineWidth', 1);
-plot(tspan(L), error_x_movmean(L), 'g', 'LineWidth', 1);
-plot(tspan(L), error_x_sg(L), 'm', 'LineWidth', 1);
-plot(tspan(L), error_x_wd(L), 'k', 'LineWidth', 1);
-title('Error Comparison');
-xlabel('Time');
-ylabel('Error');
-legend('Original','Noisy' , 'Moving Average', 'Savitzky-Golay', 'Wavelet');
-grid on;
+% % Figure 3: Error Comparison
+% figure;
+% plot(tspan(L), error_x(L), 'b', 'LineWidth', 1);
+% hold on;
+% plot(tspan(L), error_x_noisy(L), 'r', 'LineWidth', 1);
+% plot(tspan(L), error_x_movmean(L), 'g', 'LineWidth', 1);
+% plot(tspan(L), error_x_sg(L), 'm', 'LineWidth', 1);
+% plot(tspan(L), error_x_wd(L), 'k', 'LineWidth', 1);
+% title('Error Comparison');
+% xlabel('Time');
+% ylabel('Error');
+% legend('Original','Noisy' , 'Moving Average', 'Savitzky-Golay', 'Wavelet');
+% grid on;
 
 %Figure 4: Delay embedded attractors
 figure;
@@ -277,18 +272,18 @@ grid on;
 
 
 
-%--------------- Plot all of the different reconstructed x's on one plot ---------------
-figure;
-plot(tspan(L), V_x(L,1), 'b', 'LineWidth', 1);
-hold on;
-plot(tspan(L), y_sim_x2(L,1), 'r', 'LineWidth', 1);
-plot(tspan(L), y_sim_x_movmean(L,1), 'g', 'LineWidth', 1);
-plot(tspan(L), y_sim_x_sg(L,1), 'm', 'LineWidth', 1);
-plot(tspan(L), y_sim_x_wd(L,1), 'k', 'LineWidth', 1);
-title('Reconstructed x');
-xlabel('Time');
-ylabel('x');
-legend('Original', 'Noisy', 'Moving Average', 'Savitzky-Golay', 'Wavelet');
+% %--------------- Plot all of the different reconstructed x's on one plot ---------------
+% figure;
+% plot(tspan(L), V_x(L,1), 'b', 'LineWidth', 1);
+% hold on;
+% plot(tspan(L), y_sim_x2(L,1), 'r', 'LineWidth', 1);
+% plot(tspan(L), y_sim_x_movmean(L,1), 'g', 'LineWidth', 1);
+% plot(tspan(L), y_sim_x_sg(L,1), 'm', 'LineWidth', 1);
+% plot(tspan(L), y_sim_x_wd(L,1), 'k', 'LineWidth', 1);
+% title('Reconstructed x');
+% xlabel('Time');
+% ylabel('x');
+% legend('Original', 'Noisy', 'Moving Average', 'Savitzky-Golay', 'Wavelet');
 
 
 
@@ -296,7 +291,7 @@ legend('Original', 'Noisy', 'Moving Average', 'Savitzky-Golay', 'Wavelet');
 
 % Moving Average
 
-Rs = [1,5,10];
+Rs = [1, int8(r/2), r-1];
 figure;
 for j = 1:3
     i = Rs(j);
@@ -359,6 +354,4 @@ end
 %     legend ('Noisy', 'Moving Average', 'Savitzky-Golay', 'Wavelet','Original');
 %     j=j+1;
 % end
-
-
 % ------------------ End of Script ------------------
