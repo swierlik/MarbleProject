@@ -2,43 +2,40 @@
 
 % Load the data
 load('Data/lorenzData.mat') % Contains 'sol', 't', 'dt'
-load('Data/systemData.mat') % Contains 'V_x', 'A_x', 'B_x', 'xReg', 'r', 'tspan', 'dt', 'E_x', 'V_x'
-
 
 % Extract x from sol
 x_original = sol(:,1);
 
+%%Add a weird point
+%x_original(10000) = 150;
 
 %--------Add Gaussian Noise to x_original--------
-variance = 0.000001; % Noise level
+variance = 0.1; % Noise level
 x_noisy = x_original + variance*randn(size(x_original)); % Add Gaussian noise to x0
 
 % ------------------ Noise Reduction on Stochastic Data ------------------
 
 %Universal parameters (from optimization results)
-%for 0.0001 noise
-window_size = 3; % Moving Average
-order = 2; % Savitzky-Golay Order
-framelen = 45; % Savitzky-Golay Frame Length
-wd_level = 1; % Wavelet Denoising Level
-wd_wavelet ='bior3.5'; %Wavelet Denoising Wavelet
-% %for 0.02 noise
-% window_size = 7; % Moving Average
+% %for 0.01 noise
+% window_size = 11; % Moving Average
 % order = 2; % Savitzky-Golay Order
-% framelen = 49; % Savitzky-Golay Frame Length
-% wd_level = 1; % Wavelet Denoising Level
+% framelen = 95; % Savitzky-Golay Frame Length
+% wd_level = 10; % Wavelet Denoising Level
 % wd_wavelet ='dmey'; %Wavelet Denoising Wavelet
-% %for 0.05 noise
-% window_size = 13; % Moving Average
+
+% %for 0.1 noise
+% window_size = 15; % Moving Average
 % order = 2; % Savitzky-Golay Order
-% framelen = 23; % Savitzky-Golay Frame Length
-% wd_level = 9; % Wavelet Denoising Level
-% wd_wavelet ='sym4'; %Wavelet Denoising Wavelet
-%for 0.3 noise
-% window_size = 13; % Moving Average
-% order = 3; % Savitzky-Golay Order
-% framelen = 39; % Savitzky-Golay Frame Length
-% wd_level = 6; % Wavelet Denoising Level
+% framelen = 87; % Savitzky-Golay Frame Length
+% wd_level = 8; % Wavelet Denoising Level
+% wd_wavelet ='dmey'; %Wavelet Denoising Wavelet
+
+%for 1 noise
+window_size = 15; % Moving Average
+order = 2; % Savitzky-Golay Order
+framelen = 83; % Savitzky-Golay Frame Length
+wd_level = 5; % Wavelet Denoising Level
+wd_wavelet ='coif3'; %Wavelet Denoising Wavelet
 
 % ----------------Apply noise reduction to x's-----------------
 x_movmean = movmean(x_noisy, window_size); % Moving Average
@@ -46,8 +43,9 @@ x_sg = sgolayfilt(x_noisy, order, framelen); % Savitzky-Golay
 x_wd = wdenoise(x_noisy, wd_level, 'Wavelet', wd_wavelet); % Wavelet Denoising
 
 % ------------------ Generate HAVOK System Data ------------------
-r=7;
-
+r=5; % Koopman rank
+tspan = dt:dt:50;
+[V_x, A_x, B_x, xReg, U_x, E_x] = getSystem(x_original, 100, r, dt, tspan);
 [V_x2, A_x2, B_x2, xReg2,U_x2, E_x2] = getSystem(x_noisy, 100, r, dt, tspan);
 [V_movmean, A_x_movmean, B_x_movmean, xReg_movmean, U_movmean, E_movmean] = getSystem(x_movmean, 100, r, dt, tspan);
 [V_sg, A_x_sg, B_x_sg, xReg_sg, U_sg, E_sg] = getSystem(x_sg, 100, r, dt, tspan);
@@ -62,7 +60,7 @@ sys_x = ss(A_x, B_x, eye(r-1), 0*B_x);  % System matrices for x
 
 % Noisy
 sys_x2 = ss(A_x2, B_x2, eye(r-1), 0*B_x2);  % System matrices for x
-[y_sim_x2, t_sim_x2] = lsim(sys_x2, xReg2(L, r), dt2*(L-1), xReg2(1, 1:r-1));
+[y_sim_x2, t_sim_x2] = lsim(sys_x2, xReg2(L, r), dt*(L-1), xReg2(1, 1:r-1));
 
 % Moving Average
 sys_x_movmean = ss(A_x_movmean, B_x_movmean, eye(r-1), 0*B_x_movmean);  % System matrices for x
@@ -186,6 +184,14 @@ hold off;
 
 L = 1000:min(length(tspan), size(xReg, 1));
 
+%Noisy attractor plot
+figure;
+plot3(V_x2(L,1), V_x2(L,2), V_x2(L,3), 'r', 'LineWidth', 1);
+title('Noisy Delay Embedded Attractor');
+xlabel('v_1'); ylabel('v_2'); zlabel('v_3');
+grid on;
+
+
 % Figure 2: Delay Embedded Attractors
 figure;
 subplot(2, 2, 1);
@@ -219,19 +225,19 @@ xlabel('v_1'); ylabel('v_2'); zlabel('v_3');
 view(-15,65)
 grid on;
 
-% % Figure 3: Error Comparison
-% figure;
-% plot(tspan(L), error_x(L), 'b', 'LineWidth', 1);
-% hold on;
-% plot(tspan(L), error_x_noisy(L), 'r', 'LineWidth', 1);
-% plot(tspan(L), error_x_movmean(L), 'g', 'LineWidth', 1);
-% plot(tspan(L), error_x_sg(L), 'm', 'LineWidth', 1);
-% plot(tspan(L), error_x_wd(L), 'k', 'LineWidth', 1);
-% title('Error Comparison');
-% xlabel('Time');
-% ylabel('Error');
-% legend('Original','Noisy' , 'Moving Average', 'Savitzky-Golay', 'Wavelet');
-% grid on;
+% Figure 3: Error Comparison
+figure;
+plot(tspan(L), error_x(L), 'b', 'LineWidth', 1);
+hold on;
+plot(tspan(L), error_x_noisy(L), 'r', 'LineWidth', 1);
+plot(tspan(L), error_x_movmean(L), 'g', 'LineWidth', 1);
+plot(tspan(L), error_x_sg(L), 'm', 'LineWidth', 1);
+plot(tspan(L), error_x_wd(L), 'k', 'LineWidth', 1);
+title('Error Comparison');
+xlabel('Time');
+ylabel('Error');
+legend('Original','Noisy' , 'Moving Average', 'Savitzky-Golay', 'Wavelet');
+grid on;
 
 %Figure 4: Delay embedded attractors
 figure;
