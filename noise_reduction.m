@@ -51,10 +51,10 @@ x_noisy = x_original + variance*randn(size(x_original)); % Add Gaussian noise to
 
 
 %for 0.15 noise
-window_size = 15; % Moving Average
+window_size = 11; % Moving Average
 order = 4; % Savitzky-Golay Order
-framelen = 79; % Savitzky-Golay Frame Length
-wd_level = 4; % Wavelet Denoising Level
+framelen = 23; % Savitzky-Golay Frame Length
+wd_level = 3; % Wavelet Denoising Level
 wd_wavelet ='coif3'; %Wavelet Denoising Wavelet
 
 % ----------------Apply noise reduction to x's-----------------
@@ -63,7 +63,7 @@ x_sg = sgolayfilt(x_noisy, order, framelen); % Savitzky-Golay
 x_wd = wdenoise(x_noisy, wd_level, 'Wavelet', wd_wavelet); % Wavelet Denoising
 
 % ------------------ Generate HAVOK System Data ------------------
-r=7; % Koopman rank
+r=95; % Koopman rank
 tspan = dt:dt:50;
 [V_x, A_x, B_x, xReg, U_x, E_x] = getSystem(x_original, 100, r, dt, tspan);
 [V_x2, A_x2, B_x2, xReg2,U_x2, E_x2] = getSystem(x_noisy, 100, r, dt, tspan);

@@ -2,8 +2,8 @@
 clear; clc; close all;
 
 % -------- USER DEFINED PARAMETERS --------
-TARGET_R = 7;          % Set the desired HAVOK rank for this run
-TARGET_VARIANCE = 3; % Set the desired noise level variance for this run
+TARGET_R = 25;          % Set the desired HAVOK rank for this run
+TARGET_VARIANCE = 0.01; % Set the desired noise level variance for this run
 results_filename = 'Data/optimal_denoise_params.mat'; % File with precomputed params
 run_optimization_if_missing = true; % Set to true to run optimizer if params not found
 % -----------------------------------------
