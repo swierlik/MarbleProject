@@ -6,19 +6,22 @@ load('Data/lorenzData.mat') % Contains 'sol', 't', 'dt'
 % Extract x from sol
 x_original = sol(:,1);
 
-%%Add a weird point
-%x_original(10000) = 150;
+% %Add a weird point
+% x_original(10000) = 150;
 
 %--------Add Gaussian Noise to x_original--------
-variance = 0.1; % Noise level
+variance = 0.01; % Noise level
 x_noisy = x_original + variance*randn(size(x_original)); % Add Gaussian noise to x0
 
 % ------------------ Noise Reduction on Stochastic Data ------------------
 
 %Universal parameters (from optimization results)
+
+%r=5;-------------
+
 % %for 0.01 noise
 % window_size = 11; % Moving Average
-% order = 2; % Savitzky-Golay Order
+% order = 3; % Savitzky-Golay Order
 % framelen = 95; % Savitzky-Golay Frame Length
 % wd_level = 10; % Wavelet Denoising Level
 % wd_wavelet ='dmey'; %Wavelet Denoising Wavelet
@@ -30,11 +33,28 @@ x_noisy = x_original + variance*randn(size(x_original)); % Add Gaussian noise to
 % wd_level = 8; % Wavelet Denoising Level
 % wd_wavelet ='dmey'; %Wavelet Denoising Wavelet
 
-%for 1 noise
+% %for 1 noise
+% window_size = 15; % Moving Average
+% order = 2; % Savitzky-Golay Order
+% framelen = 83; % Savitzky-Golay Frame Length
+% wd_level = 5; % Wavelet Denoising Level
+% wd_wavelet ='coif3'; %Wavelet Denoising Wavelet
+
+%r=10;-----------------
+
+% %for 0.01 noise
+% window_size = 15; % Moving Average
+% order = 4; % Savitzky-Golay Order
+% framelen = 79; % Savitzky-Golay Frame Length
+% wd_level = 4; % Wavelet Denoising Level
+% wd_wavelet ='coif3'; %Wavelet Denoising Wavelet
+
+
+%for 0.15 noise
 window_size = 15; % Moving Average
-order = 2; % Savitzky-Golay Order
-framelen = 83; % Savitzky-Golay Frame Length
-wd_level = 5; % Wavelet Denoising Level
+order = 4; % Savitzky-Golay Order
+framelen = 79; % Savitzky-Golay Frame Length
+wd_level = 4; % Wavelet Denoising Level
 wd_wavelet ='coif3'; %Wavelet Denoising Wavelet
 
 % ----------------Apply noise reduction to x's-----------------
@@ -43,7 +63,7 @@ x_sg = sgolayfilt(x_noisy, order, framelen); % Savitzky-Golay
 x_wd = wdenoise(x_noisy, wd_level, 'Wavelet', wd_wavelet); % Wavelet Denoising
 
 % ------------------ Generate HAVOK System Data ------------------
-r=5; % Koopman rank
+r=7; % Koopman rank
 tspan = dt:dt:50;
 [V_x, A_x, B_x, xReg, U_x, E_x] = getSystem(x_original, 100, r, dt, tspan);
 [V_x2, A_x2, B_x2, xReg2,U_x2, E_x2] = getSystem(x_noisy, 100, r, dt, tspan);
@@ -341,6 +361,37 @@ for j = 1:3
     ylabel(['x', num2str(i)]);
     legend ('Original', 'Noisy', 'Wavelet');
 end
+
+% -------------- Bar Chart: Sum of Errors --------------
+% Compute the sum of squared errors for each method over the index range L
+errorMeans = [mean(error_x(L)), mean(error_x_noisy(L)), mean(error_x_movmean(L)), ...
+             mean(error_x_sg(L)), mean(error_x_wd(L))];
+methods = {'HAVOK Original', 'Noisy HAVOK', 'Moving Average', 'Savitzky-Golay', 'Wavelet'};
+
+figure;
+bar(errorMeans);
+set(gca, 'XTickLabel', methods, 'XTick',1:numel(methods));
+ylabel('Mean of Squared Errors');
+title('Mean of Errors for Each Method');
+
+% -------------- Bar Chart: Percentage of Time in the Same Lobe --------------
+% For each method, calculate the percentage of time that the sign of the 
+% reconstructed x matches the sign of the original x.
+sameLobe_orig = sum( ((x_original(L) > 0 & x_reconstructed(L) > 0) | (x_original(L) < 0 & x_reconstructed(L) < 0)) );
+sameLobe_noisy = sum( ((x_original(L) > 0 & x_reconstructed_noisy(L) > 0) | (x_original(L) < 0 & x_reconstructed_noisy(L) < 0)) );
+sameLobe_movmean = sum( ((x_original(L) > 0 & x_reconstructed_movmean(L) > 0) | (x_original(L) < 0 & x_reconstructed_movmean(L) < 0)) );
+sameLobe_sg = sum( ((x_original(L) > 0 & x_reconstructed_sg(L) > 0) | (x_original(L) < 0 & x_reconstructed_sg(L) < 0)) );
+sameLobe_wd = sum( ((x_original(L) > 0 & x_reconstructed_wd(L) > 0) | (x_original(L) < 0 & x_reconstructed_wd(L) < 0)) );
+
+percentageSameLobe = 100 * [sameLobe_orig, sameLobe_noisy, sameLobe_movmean, sameLobe_sg, sameLobe_wd] / length(L);
+
+figure;
+bar(percentageSameLobe);
+set(gca, 'XTickLabel', methods, 'XTick',1:numel(methods));
+ylabel('Percentage (%)');
+title('Percentage of Time Vectors Are in the Same Lobe');
+
+
 
 % %Plot all sgolayfilt x's multiple subplots
 % figure;

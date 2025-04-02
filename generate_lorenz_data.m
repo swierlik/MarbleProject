@@ -24,6 +24,10 @@ lorenz = @(t, xyz) [sigma*(xyz(2) - xyz(1)); ...
 options = odeset('RelTol', 1e-12, 'AbsTol', 1e-12);
 [t, sol] = ode45(lorenz, tspan, initial_conditions, options);
 
+% %Sample every 10th point
+% sol = sol(1:10:end, :);
+% t = t(1:10:end, :);
+
 % Save the data
 save('Data/lorenzData.mat', 'sol', 't', 'dt')
 disp('Data generation complete.')

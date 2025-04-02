@@ -6,9 +6,12 @@ load('Data/lorenzData.mat') % Contains 'sol', 't', 'dt'
 % Extract x from sol
 x_original = sol(:,1);
 
+% % Add a weird point
+% x_original(10000) = 1000; % Add a weird point to test robustness
+
 % Parameter ranges to test
-variance = 1; % Fixed noise level for testing
-tspan = dt:dt:50;
+variance = 0.1; % Fixed noise level for testing
+tspan = t;
 r = 5; % HAVOK rank parameter
 
 % Parameter ranges
