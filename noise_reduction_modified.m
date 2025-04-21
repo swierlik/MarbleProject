@@ -3,7 +3,7 @@ clear; clc; close all;
 
 % -------- USER DEFINED PARAMETERS --------
 TARGET_R = 10;          % Set the desiyred HAVOK rank for this run
-TARGET_VARIANCE = 100; % Set the desired noise level variance for this run
+TARGET_VARIANCE = 0.01; % Set the desired noise level variance for this run
 results_filename = 'Data/optimal_denoise_params.mat'; % File with precomputed params
 run_optimization_if_missing = true; % Set to true to run optimizer if params not found
 % -----------------------------------------
@@ -14,11 +14,15 @@ fprintf('Running analysis for r = %d, variance = %g\n', TARGET_R, TARGET_VARIANC
 try
     load('Data/lorenzData.mat', 'sol', 't', 'dt'); % Contains 'sol', 't', 'dt'
     x_original = sol(:,1);
-    tspan = dt:dt:t(end);
+    tspan = t;
     fprintf('Loaded Lorenz data.\n');
 catch ME
     error('Failed to load Data/lorenzData.mat: %s', ME.message);
 end
+
+
+
+
 
 % Add Gaussian Noise to x_original
 rng('default'); % Reset RNG for consistent noise generation if script is rerun
@@ -346,7 +350,6 @@ grid on;
 %Plot separate figures for each noise reduction method
 
 % Moving Average
-
 Rs = [1, int8(r/2), r-1];
 figure('Name', sprintf('Reconstructed Vs with MA (r=%d, var=%g)', TARGET_R, TARGET_VARIANCE));
 for j = 1:3
@@ -391,6 +394,14 @@ for j = 1:3
     ylabel(['x', num2str(i)]);
     legend ('Original', 'Noisy', 'Wavelet');
 end
+
+% Plot the original vs reconstructed x(t)
+figure('Name', sprintf('Original vs Reconstructed x(t) (r=%d, var=%g)', TARGET_R, TARGET_VARIANCE));
+hold on;
+plot(tspan(L), x_original(L), 'b', 'LineWidth', 1.2);
+plot(tspan(L), x_reconstructed(L), 'r', 'LineWidth', 1.2);
+
+
 
 
 fprintf('Analysis and plotting complete.\n');
