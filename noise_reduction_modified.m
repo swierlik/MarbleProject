@@ -20,17 +20,47 @@ catch ME
     error('Failed to load Data/lorenzData.mat: %s', ME.message);
 end
 
+%% Add some wild error points to the data
+for i=1:150
+    % Randomly select a point to remove/average
+    idx = randi(length(tspan));
+    
+    % % Remove the point from the solution
+    x_original(idx) = x_original(idx) + 25*randn();
+end
+
+x_raw = x_original; % Keep a copy of the original data for reference
+
+%Attempt removing them with a rolling window statistic
+%Flag if a point is far from the local mean, like |x - rolling_mean| > 3 * rolling_std
+
+windowSize = 7;
+halfWin = floor(windowSize / 2);
+
+for i = (1 + halfWin):(length(x_original) - halfWin)
+    windowData = x_original(i - halfWin:i + halfWin);
+    windowData(halfWin + 1) = [];
+
+    med = median(windowData, 'omitnan');
+    mad_val = mad(windowData, 1);%=MEDIAN(ABS(X-MEDIAN(X))
+
+    % Typical MAD threshold for normal-ish data: ~3.5
+    if abs(x_original(i) - med) > 3.5 * mad_val
+        x_original(i) = med;
+    end
+end
 
 
 
 
-% Add Gaussian Noise to x_original
+
+%% Add Gaussian Noise to x_original
 rng('default'); % Reset RNG for consistent noise generation if script is rerun
 rng(2); % Or use a specific seed if needed across runs
 x_noisy = x_original + sqrt(TARGET_VARIANCE) * randn(size(x_original));
 fprintf('Added Gaussian noise with variance %g.\n', TARGET_VARIANCE);
 
-% --- Parameter Loading ---
+%% --- Parameter Loading ---
 params_found = false;
 bestParams = struct(); % Initialize empty struct
 
@@ -57,7 +87,7 @@ else
     fprintf('Precomputed parameter file %s not found.\n', results_filename);
 end
 
-% --- Run Optimization if Parameters Not Found ---
+%% --- Run Optimization if Parameters Not Found ---
 if ~params_found
     if run_optimization_if_missing
         fprintf('Running optimization on-the-fly...\n');
@@ -123,7 +153,7 @@ fprintf('  WD Level: %d\n', wd_level);
 fprintf('  WD Wavelet: %s\n', wd_wavelet);
 
 
-% ----------------Apply noise reduction to x's-----------------
+%% ----------------Apply noise reduction to x's-----------------
 fprintf('Applying noise reduction methods...\n');
 x_movmean = movmean(x_noisy, window_size); % Moving Average
 
@@ -144,7 +174,7 @@ end
 fprintf('Noise reduction applied.\n');
 
 
-% ------------------ Generate HAVOK System Data ------------------
+%% ------------------ Generate HAVOK System Data ------------------
 fprintf('Generating HAVOK systems...\n');
 r = TARGET_R; % Use the target r defined at the start
 % Ensure getSystem is available
@@ -200,7 +230,7 @@ catch ME; warning('Simulation failed for WD: %s', '%s',ME.message); y_sim_x_wd =
 fprintf('Simulations complete.\n');
 
 
-% -------------- Reconstruct x(t) for Each Method --------------
+%% -------------- Reconstruct x(t) for Each Method --------------
 fprintf('Reconstructing x(t)...\n');
 % Ensure dehankelize is available
 if exist('dehankelize', 'file') ~= 2
@@ -230,7 +260,7 @@ x_reconstructed_wd      = check_reconstruction(x_reconstructed_wd, L_len);
 fprintf('x(t) reconstructed.\n');
 
 
-% -------------- Error Calculation for Reconstructed x(t) --------------
+%% -------------- Error Calculation for Reconstructed x(t) --------------
 fprintf('Calculating errors...\n');
 % Ensure comparison lengths are valid
 compare_len = min(length(x_original), length(x_reconstructed)); % Find minimum valid length
@@ -396,12 +426,25 @@ for j = 1:3
 end
 
 % Plot the original vs reconstructed x(t)
-figure('Name', sprintf('Original vs Reconstructed x(t) (r=%d, var=%g)', TARGET_R, TARGET_VARIANCE));
+figure('Name', sprintf('Original vs Reconstructed vs WD x(t) (r=%d, var=%g)', TARGET_R, TARGET_VARIANCE));
 hold on;
 plot(tspan(L), x_original(L), 'b', 'LineWidth', 1.2);
 plot(tspan(L), x_reconstructed(L), 'r', 'LineWidth', 1.2);
+plot(tspan(L), x_reconstructed_noisy(L), 'g', 'LineWidth', 1.2);
+plot(tspan(L), x_reconstructed_wd(L), 'g', 'LineWidth', 1.2);
+legend('Original', 'Reconstructed', 'Noisy', 'Wavelet Denoised');
+xlabel('Time');
+ylabel('x(t)');
 
-
+%Plot x_raw vs x_original
+figure('Name', sprintf('Clean vs Raw x(t) (r=%d, var=%g)', TARGET_R, TARGET_VARIANCE));
+hold on;
+plot(tspan(L), x_raw(L), 'r', 'LineWidth', 1.2);
+plot(tspan(L), x_original(L), 'b', 'LineWidth', 1.2);
+legend('Raw', 'Cleaned');
+xlabel('Time');
+ylabel('x(t)');
+title('Clean vs Raw x(t)');
 
 
 fprintf('Analysis and plotting complete.\n');
