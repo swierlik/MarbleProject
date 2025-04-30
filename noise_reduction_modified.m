@@ -1,9 +1,9 @@
 % noise_reduction_modified.m
-clear; clc; close all;
+clear; close all;
 
 % -------- USER DEFINED PARAMETERS --------
 TARGET_R = 10;          % Set the desiyred HAVOK rank for this run
-TARGET_VARIANCE = 0.01; % Set the desired noise level variance for this run
+TARGET_VARIANCE = 0.1; % Set the desired noise level variance for this run
 results_filename = 'Data/optimal_denoise_params.mat'; % File with precomputed params
 run_optimization_if_missing = true; % Set to true to run optimizer if params not found
 % -----------------------------------------
@@ -20,43 +20,41 @@ catch ME
     error('Failed to load Data/lorenzData.mat: %s', ME.message);
 end
 
-%% Add some wild error points to the data
-for i=1:150
-    % Randomly select a point to remove/average
-    idx = randi(length(tspan));
+% %% Add some wild error points to the data
+% for i=1:150
+%     % Randomly select a point to remove/average
+%     idx = randi(length(tspan));
     
-    % % Remove the point from the solution
-    x_original(idx) = x_original(idx) + 25*randn();
-end
+%     % % Remove the point from the solution
+%     x_original(idx) = x_original(idx) + 25*randn();
+% end
 
 x_raw = x_original; % Keep a copy of the original data for reference
 
-%Attempt removing them with a rolling window statistic
-%Flag if a point is far from the local mean, like |x - rolling_mean| > 3 * rolling_std
+% %Attempt removing them with a rolling window statistic
+% %Flag if a point is far from the local mean, like |x - rolling_mean| > 3 * rolling_std
 
-windowSize = 7;
-halfWin = floor(windowSize / 2);
+% windowSize = 7;
+% halfWin = floor(windowSize / 2);
 
-for i = (1 + halfWin):(length(x_original) - halfWin)
-    windowData = x_original(i - halfWin:i + halfWin);
-    windowData(halfWin + 1) = [];
+% for i = (1 + halfWin):(length(x_original) - halfWin)
+%     windowData = x_original(i - halfWin:i + halfWin);
+%     windowData(halfWin + 1) = [];
 
-    med = median(windowData, 'omitnan');
-    mad_val = mad(windowData, 1);%=MEDIAN(ABS(X-MEDIAN(X))
+%     med = median(windowData, 'omitnan');
+%     mad_val = mad(windowData, 1);%=MEDIAN(ABS(X-MEDIAN(X))
 
-    % Typical MAD threshold for normal-ish data: ~3.5
-    if abs(x_original(i) - med) > 3.5 * mad_val
-        x_original(i) = med;
-    end
-end
-
-
+%     % Typical MAD threshold for normal-ish data: ~3.5
+%     if abs(x_original(i) - med) > 3.5 * mad_val
+%         x_original(i) = med;
+%     end
+% end
 
 
 
 %% Add Gaussian Noise to x_original
 rng('default'); % Reset RNG for consistent noise generation if script is rerun
-rng(2); % Or use a specific seed if needed across runs
+rng(); % Or use a specific seed if needed across runs
 x_noisy = x_original + sqrt(TARGET_VARIANCE) * randn(size(x_original));
 fprintf('Added Gaussian noise with variance %g.\n', TARGET_VARIANCE);
 
