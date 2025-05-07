@@ -10,14 +10,43 @@ run_optimization_if_missing = true; % Set to true to run optimizer if params not
 
 fprintf('Running analysis for r = %d, variance = %g\n', TARGET_R, TARGET_VARIANCE);
 
-% Load the original data
+
+
+% Load data data
 try
-    load('Data/lorenzData.mat', 'sol', 't', 'dt'); % Contains 'sol', 't', 'dt'
-    x_original = sol(:,1);
+    % load('Data/lorenzData.mat', 'sol', 't', 'dt'); % Contains 'sol', 't', 'dt'
+    load('Data/rosslerData.mat', 'sol', 't', 'dt'); % Contains 'sol', 't', 'dt'
+    %load('Data/dpendulumData.mat', 'sol', 't', 'dt'); % Contains 'sol', 't', 'dt'
+    x_original = sol(:,2);
+
+    % load('Data/triple_pendulum_chaotic_xyz.mat', 'xyz', 't'); % Contains 'xyz', 't'
+    % x_original = xyz(:, 5); % Extracts x3 from the triple pendulum data
+    % dt=0.001;
+
     tspan = t;
-    fprintf('Loaded Lorenz data.\n');
+
+
+    % load('Data/weather_table_45day.mat', 'T') %Containts 'T'
+    % x_original = T.WVHT; 
+
+    % load('Data/EEG_data.mat', 'T'); % Load EEG data
+    % x_original = T.Fp1; 
+
+    % load('Data/MAG_data.mat', 'T'); % Load MAG data
+    % x_original = T.dst; 
+
+    % dt=1; %Time step is actually 30 mins but we will assume 30min = 1 unit for simplicity
+    % tspan = 1:length(x_original); % Create a time vector based on the length of x_original
+    
+    %x_original = fillmissing(x_original, 'movmean', 5);  % 5-point window
+
+    mask = ~isnan(x_original);                        % True for valid entries
+    tspan = tspan(mask);                         % Keep only valid times
+    x_original = x_original(mask);                    % Keep only valid PRES
+
+    fprintf('Loaded weather data.\n');
 catch ME
-    error('Failed to load Data/lorenzData.mat: %s', ME.message);
+    error('Failed to load: %s', ME.message);
 end
 
 % %% Add some wild error points to the data
@@ -28,8 +57,6 @@ end
 %     % % Remove the point from the solution
 %     x_original(idx) = x_original(idx) + 25*randn();
 % end
-
-x_raw = x_original; % Keep a copy of the original data for reference
 
 % %Attempt removing them with a rolling window statistic
 % %Flag if a point is far from the local mean, like |x - rolling_mean| > 3 * rolling_std
@@ -58,6 +85,7 @@ rng(); % Or use a specific seed if needed across runs
 x_noisy = x_original + sqrt(TARGET_VARIANCE) * randn(size(x_original));
 fprintf('Added Gaussian noise with variance %g.\n', TARGET_VARIANCE);
 
+x_raw = x_noisy; % Keep a copy of the noisy data for reference
 %% --- Parameter Loading ---
 params_found = false;
 bestParams = struct(); % Initialize empty struct
@@ -85,6 +113,8 @@ else
     fprintf('Precomputed parameter file %s not found.\n', results_filename);
 end
 
+%Debugging
+params_found = false; % Force to false for testing
 %% --- Run Optimization if Parameters Not Found ---
 if ~params_found
     if run_optimization_if_missing
@@ -329,12 +359,13 @@ grid on; view(3);
 
 figure('Name', sprintf('Reconstruction Comparison (r=%d, var=%g)', TARGET_R, TARGET_VARIANCE));
 hold on;
+plot(t_sim_x, x_original(L_comp), 'black', 'LineWidth', 1.2); % Black for original
 plot(t_sim_x, x_reconstructed(L_comp), 'b', 'LineWidth', 1.2);
 plot(t_sim_x2, x_reconstructed_noisy(L_comp), 'r', 'LineWidth', 1.2);
 plot(t_sim_x_movmean, x_reconstructed_movmean(L_comp), 'g', 'LineWidth', 1.2);
 plot(t_sim_x_sg, x_reconstructed_sg(L_comp), 'm', 'LineWidth', 1.2);
 plot(t_sim_x_wd, x_reconstructed_wd(L_comp), 'c', 'LineWidth', 1.2); % Cyan for Wavelet
-legend('HAVOK Original', 'Noisy HAVOK', 'Moving Avg', 'Savitzky-Golay', 'Wavelet');
+legend('Original', 'HAVOK Original', 'Noisy HAVOK', 'Moving Avg', 'Savitzky-Golay', 'Wavelet');
 xlabel('Time'); ylabel('x(t)');
 title(sprintf('Reconstruction of x(t) (r=%d, var=%g)', TARGET_R, TARGET_VARIANCE));
 grid on;
